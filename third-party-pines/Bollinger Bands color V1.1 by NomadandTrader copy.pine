@@ -1,0 +1,27 @@
+//Crée par J.Dow
+//Bollinger Band Color
+//Version V1.1
+study(shorttitle="BB color V1.1", title="Bollinger Bands color V1.1", overlay=true)
+
+length = input(defval=50, minval=1, title ="MA - Simple")
+src = input(defval=close, title="Source")
+len = input(defval=2, minval=1, title="MA - Exponantial")
+mult = input(defval=2.0, minval=0.001, maxval=50)
+//pr = input(defval=true, type=bool, title="Price Color" )
+
+//Bollinger Bands
+basis = sma(src, length)
+dev = mult * stdev(src, length)
+upper = basis + dev
+lower = basis - dev
+
+price = ema(src, len)
+linecolor = price >= basis ? green : red
+
+
+//Affichage
+
+plot(basis, color=red, transp=75, title="Moving Average")
+p1 = plot(upper, color=linecolor, transp=35, title="high band")
+p2 = plot(lower, color=linecolor, transp=35, title="Low band")
+fill(p1, p2, color=linecolor, transp=95, title="background")

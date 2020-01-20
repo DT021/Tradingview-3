@@ -1,0 +1,47 @@
+//@version=3
+study(title="Money Flow Index")
+
+// Typical price = (high price + low price + closing price) / 3
+// Raw money flow = typical price x volume
+// Money flow ratio = (14-day Positive Money Flow) / (14-day Negative Money Flow)
+// Positive money flow is calculated by summing up all of the money flow on the days in the period
+// where the typical price is higher than the previous typical price. This same logic applies for the negative money flow.
+// MFI = 100 - 100 / (1 + money flow ratio)
+
+length = input(title="Period Length", type=integer, defval=10, minval=1)
+
+show_value = input(title="Show which value", type=string, options=["Raw Money Flow", "Money Flow Ratio", "Money Flow Index"], defval="Money Flow Index")
+show_raw = (show_value == "Raw Money Flow")
+show_ratio = (show_value == "Money Flow Ratio")
+show_index = (show_value == "Money Flow Index")
+
+show_sma = input(title="Show MFI SMA", type=bool, defval=true)
+avg_len = input(title="SMA Length", type=integer, defval=5, minval=1)
+
+mfi_high = 80
+mfi_mid = 50
+mfi_low = 20
+
+prc = avg(high, low, close)
+raw = prc * volume
+
+pos_day = (prc[0] >= prc[1]) ? raw : 0
+neg_day = (prc[0] <= prc[1]) ? raw : 0
+
+pos_period = sum(pos_day, length)
+neg_period = sum(neg_day, length)
+
+mf_ratio = (pos_period / neg_period)
+mf_index = 100 - (100 / (1 + mf_ratio))
+mfi_sma = sma(mf_index, avg_len)
+
+plot(show_raw ? pos_period : na, "Positive Flow", green, linewidth=2, transp=0)
+plot(show_raw ? neg_period : na, "Negative Flow", red, linewidth=2, transp=0)
+plot(show_ratio ? mf_ratio : na, "Money Flow Ratio", black, linewidth=2, transp=0)
+plot(show_index ? mf_index : na, "Money Flow Index", blue, linewidth=2, transp=0)
+plot(show_index and show_sma ? mfi_sma : na, "Money Flow SMA", gray, linewidth=1, transp=0)
+plot(show_index ? mfi_high : na, "High Line", green)
+plot(show_index ? mfi_mid : na, "Mid Line", silver)
+plot(show_index ? mfi_low : na, "Low Line", red)
+
+//EOF

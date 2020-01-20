@@ -1,0 +1,157 @@
+//@version=3
+study("Donchian Fibonacci Zones with Trading Features", shorttitle="DFT", overlay=true)
+//INPUTS
+per=input(24, type=integer, minval=15, maxval=60)
+preunit=input('atr', title="prediction in atr or percent", options=['atr', 'percent'])
+preamount=input(1, title="added amount of prediction", type=float, minval=0, maxval=6)
+
+//CHANNEL
+hb= highest(high,per) //High Border
+lb = lowest(low,per)   //Low Border
+dist = hb-lb          //range of the channel 
+med = (hb+lb)/2        //median of the channel
+
+hf = hb-dist*0.236    //Highest Fib
+chf = hb-dist*0.382    //Center High Fib
+clf = hb-dist*0.618    //Center Low Fib
+lf = hb-dist*0.764     //Lowest Fib
+
+//PULL BACK LEVELS
+//initialise mutatables
+leh=hb
+lel=lb
+hbtrue=true
+
+evpup = high>hb[1] //push up event
+evhbstart =  hb[3]==hb[2] and hb[2]==hb[1] and evpup //horizontal then up, part of evhb calculation
+evpdown = low<lb[1] //push down event
+evlbstart = lb[3]==lb[2] and lb[2]==lb[1] and evpdown //horizontal then down, part of evlb calculation
+
+//two levels will be merged in the plot
+evhb = evhbstart or high[1] == hb //event with high border
+leh := evhb? hf :leh[1] //level high mutatable set to highest fib on event or kept on value
+evlb = evlbstart or low[1] == lb  //event with low border
+lel := evlb? lf :lel[1] //level low mutatable set to lowest fib on event or kept on value
+hbtrue := evhb?true :evlb?false :hbtrue[1] //last event mutatable
+
+//ENTRY MARKERS
+tol=atr(per)*0.2 //tolerance for placing triangles and prediction candles at borders
+//initialise mutatables
+hftrue = true
+lftrue = true
+cftrue = true
+evupin = crossover(close, hf) //market enters up trend
+evupout = crossunder(close, hf) //market leaves up trend
+hftrue := evupin? true :evupout? false :hftrue[1] //mutatable true if in up trend
+evdownin = crossunder(close, lf) //market enters down trend
+evdownout = crossover(close, lf) //market leaves down trend
+lftrue := evdownin? true :evdownout? false :lftrue[1] //mutatable true if in down trend
+cftrue := not hftrue and not lftrue? true : false    //mutatable true if instrument is ranging
+
+//IDENTIFY LAST BAR
+last= barstate.islast
+last:= barstate.isrealtime and isintraday? not barstate.isconfirmed :barstate.islast 
+//barstate.islast works also when all bars are confirmed and are history. However in real time and intradaycharts bars never lose this state.
+//In that situation 'not barstate.isconfirmed' (like not ishistory) is the better alternative. if you use intraday charts after closing time of
+//the markets "barstate.isrealtime and isintraday" will be false and the script will use barstate.islast.
+
+//SITUATION 
+hbdtrue = last and hftrue  //up trend
+lbdtrue = last and lftrue  //down trend
+chfdtrue = last and cftrue and hbtrue //high ranging
+clfdtrue = last and cftrue and not hbtrue //low ranging
+
+//expected levels
+schigh = hb
+schigh := hbdtrue? hb :lbdtrue? lf :chfdtrue? hf :clfdtrue? chf :na //situation candle high
+sclow = lb
+sclow := hbdtrue? hf :lbdtrue? lb :chfdtrue? clf :clfdtrue? lf :na //situation candle low
+
+//prediction levels
+pred= preunit=='atr'? preamount*atr(per) :preunit=='percent'? preamount*close/100 :0 
+prcahigh = med
+prcahigh := hbdtrue and (evpup or evpup[1])? hb+pred :na //prediction level higher than high border
+prcalow = med
+prcalow :=  lbdtrue and (evpdown or evpdown[1])? lb-pred :na //prediction level lower than low border
+
+//HULL MOVING AVERAGE
+hma = wma((2 * wma(close, per / 2)) - wma(close, per), round(sqrt(per)))
+
+
+//PLOTTINGS
+//plot channel and fibzones
+phb=plot(hbdtrue? na :hb, title="high border", color=black)
+phf = plot(hbdtrue or chfdtrue? na :hf, title="highest fib", color=gray, transp=80)
+pchf = plot(last? na :chf, title="centhi fib", color=gray, transp=80)
+pclf = plot(last? na :clf, title="centlo fib", color=gray, transp=80)
+plf = plot(lbdtrue or clfdtrue? na :lf, title= "lowest fib", color= gray, transp= 80)
+plb = plot(lbdtrue? na :lb, title="low border", color=black)
+
+fill(phb,phf, color= hftrue? #00FFFF70 :#00FFFF10, title="up trend zone") //up trend zone, blue or transparant blue
+fill(pchf,pclf, color= cftrue?#40404060 :#40404010, title="ranging zone")   // ranging zone, dark gray or light gray
+fill(plf,plb, color= lftrue? #FF800099 :#FF800010, title="down trend zone")   //down trend zone, orange or transparant orange
+
+//plot pull back levels
+plot(last? na :hbtrue?leh:lel, title="swing level", color= hbtrue?#0000ff99:#ff000099, linewidth=3, style=line) //levels blue purple
+
+//plot entry markers
+plotshape(evupin?hb+tol :na, style=shape.triangleup, location=location.absolute, color=blue, size=size.tiny)
+plotshape(evupout?hb+tol :na, style=shape.xcross, location=location.absolute, color=gray, size=size.tiny)
+plotshape(evdownin?lb-tol :na, style=shape.triangledown, location=location.absolute, color=red, size=size.tiny)
+plotshape(evdownout?lb-tol :na, style=shape.xcross, location=location.absolute, color=gray, size=size.tiny)
+
+//plot future circle markers
+plotshape(hbdtrue?hb:na, style=shape.circle, location=location.absolute, color=blue, offset=1, size=size.tiny)
+plotshape(lbdtrue?lb:na, style=shape.circle, location=location.absolute, color=red, offset=1, size=size.tiny)
+plotshape(chfdtrue?chf:na, style=shape.circle, location=location.absolute, color=green, offset=1, size=size.tiny)
+plotshape(clfdtrue?clf:na, style=shape.circle, location=location.absolute, color=maroon, offset=1, size=size.tiny)
+
+//plot expected range levels
+plot(schigh, linewidth = 5, title=" expect", color=teal, offset=3)
+plot(sclow, linewidth = 5, title=" expect", color=teal, offset=3)
+
+//plot prediction levels 
+plot(last and (evpup or evpup[1]) and preamount>0?prcahigh :na, style=cross, title=" predict", linewidth = 5, color = blue, offset=3)
+plot(last and (evpdown or evpdown[1]) and preamount>0?prcalow :na, style=cross, title=" predict", linewidth = 5, color = red, offset=3)
+
+//plot predictionmarkers
+plotshape(hbdtrue and (evpup or evpup[1])? hb+tol :na, style=shape.diamond, location=location.absolute, color=blue, size=size.tiny, offset=3)
+plotshape(lbdtrue and (evpdown or evpdown[1])? lb-tol :na, style=shape.diamond, location=location.absolute, color=red, size=size.tiny, offset=3)
+
+//plot Hull moving average
+plot(last? na :hma, title="Hull ma", linewidth=2, color=navy)
+
+// DONCHIAN FIBONACCI TRADING TOOL
+// This indicator is based on a Donchian Channel with Fibonacci zones I published before. Features are added which enable trading decisions, it suggests when to open either a long or a short position, it provides suggestions for a stop loss level and suggests a take profit level, the calculation of the take profit suggestion can be altered in the inputs. The user should devise a trading strategy on his own, several strategies are possible, but as a Donchian Channel is used, these must come down to refinements in the classical Turtle Trading system.
+// NO LAGGING
+// Donchian Channels have no lagging, this tool being based on these, has none as well. The only added feature with a little lagging is the Hull MA, all other features work at once and report right now the historical context of the present bar or candle even while it is developping.
+// ANY TIME FRAME
+// This indicator works in any time frame. However, when the user sets the prediction calculation to percent, then in small intraday time frames the result will be relatively huge.
+// FALSE SIGNALS
+// Fibonacci retracement levels are based on inclinations which exist in nature and which also exist in the financial markets. The expectations, labeled ‘DFT: expect’, based on these levels, are usually correct. The take profit levels otoh, labeled ‘DFT: predict’, are usually incorrect. The trader should take care and needs proper ‘gut feeling’ in using these
+// FEATURES TRIGGERED BY THE MARKET ENTERING OR LEAVING ZONES
+// 1. REACTIVE COLORS
+// The zone in which the close is, is brighter coloured.
+// 2. ENTRY AND EXIT MARKERS NEAR UP- OR DOWN TREND ZONES
+// If the close enters the Up Trend or Down Trend zone, coming from another zone, a triangle is placed just outside the channel border. If it leaves the zone, an X cross is placed.
+// 3. MARKET SITUATION EXPECTATION LEVELS (OFFSET)
+// The indicator can report four market situations which may be valid for the last candle:
+// 3.1. Market is in up trend: a blue dot is placed in an offset (=future) position of the High Border,
+// expect levels are placed offset of High Border and the Highest Fibonacci line,
+// 3.2. Market is in down trend: a red dot is placed offset the Low Border, also expect levels offset the Low Border and the Lowest Fibonacci line.
+// 3.3. Market is high ranging, i.e. last break out was at High Border and market is not in up- or down trend. A green dot is placed offset the Center High Fibonacci line and expect levels offset the Highest and Center Low Fibonacci lines.
+// 3.4. Market is low ranging, i.e. last break out was at Low Border and market is not in up- or down trend. A brown dot is placed offset the Center Low Fibonacci line and expect levels offset the Center High and Lowest Fibonacci lines.
+// FEATURES TRIGGERED BY AN ATTEMPT TO BREAK OUT OF THE CHANNEL BORDERS
+// 4. SWING LINE
+// When the High Border is touched, the Swing Line changes its level to the Highest Fibonacci line and changes its color to blue. When the Low Border is touched, the Swing Line changes its level to the Lowest Fibonacci line and changes its color to red. This way you can see whether the general trend is up- or down and also if and when the line has been crossed.
+// 5. DIAMOND MARKERS (OFFSET)
+// These markers flash when the last bar or candle or the one before that, touches a channel border, the offset is equal to the expect levels.
+// 6. PREDICTION LEVEL (OFFSET)
+// The prediction level flashes in the same situation as the diamond marker. The default level is 1 Average True Range . Most are in fact false signals. One can switch the prediction level off by setting the added amount to 0, then only the Diamond Markers will flash
+// OTHER FEATURES
+// 7. HULL MOVING AVERAGE
+// Its direction provides an indication of the price dynamics.
+// 8. SUPPRESSION OF PLOTTING SOME LAST VALUES
+// Quite a few lines stop before the last bar or candle. This way the last candle seem free loating and the chart reports only the values the user needs. 
+
+

@@ -1,0 +1,78 @@
+//cryptocodes.ca
+////
+//  Red/Green Background: KDJ divergence
+//
+//    Green/Maroon Cloud: KD (KDJ) as an average
+//              Lime/Red: J (KDJ)
+//                        * Lime = Bullish KDJ divergence
+//                        * Red = Bearish KDJ divergence
+//             Gray Line: Stoch RSI with Wells Wilders (RSIWW)
+//
+//              Up Arrow: Oversold (20)
+//            Down Arrow: Overbought (98)
+//
+//////////////////////////////////////////////
+
+study(title="xRSI_KDJ_SMA_v2", shorttitle="xRSI_KDJ_SMA", overlay=false)
+
+c = close
+r = rsi(c, 8)
+
+// KDJ indicator (iamaltcoin)
+ilong = input(9, title="period")
+isig = input(3, title="signal")
+bcwsma(s,l,m) => 
+    _s = s
+    _l = l
+    _m = m
+    _bcwsma = (_m*_s+(_l-_m)*nz(_bcwsma[1]))/_l
+    _bcwsma
+h = highest(high, ilong)
+l = lowest(low,ilong)
+RSV = 100*((c-l)/(h-l))
+pK = bcwsma(RSV, isig, 1)
+pD = bcwsma(pK, isig, 1)
+pJ = 3 * pK-2 * pD
+KD = (pK+pD)/2
+j_trend_colour = iff(pJ > KD, lime, red)
+kd_trend_colour = iff(pJ > KD, green, maroon)
+p1 = plot(KD, linewidth=2, color=kd_trend_colour)
+p2 = plot(pJ, linewidth=2, color=j_trend_colour)
+KDJ_twist_green = crossover(pJ, KD)
+KDJ_twist_red = crossunder(KD, pJ)
+alertcondition(KDJ_twist_green, title="KDJ Twist Green", message="KDJ Twist Green")
+alertcondition(KDJ_twist_red, title="KDJ Twist Red", message="KDJ Twist Red")
+
+// RSI_FIBMA
+wwma(l,p) =>
+    wwma = (nz(wwma[1]) * (l - 1) + p) / l
+Stolength = input(4, title = "RSI_FIBMA")
+os = input (20, title = "Oversold")
+ob = input (98, title = "Overbought")
+alertcondition(os, message='BUY', title='Oversold')
+alertcondition(ob, message='SELL', title='Overbought')
+hiDiff = high - high[1]
+loDiff = low[1] - low
+plusDM = (hiDiff > loDiff) and (hiDiff > 0) ? hiDiff : 0
+minusDM = (loDiff > hiDiff) and (loDiff > 0) ? loDiff : 0
+ATR = wwma(r, tr)
+PlusDI = 100 * wwma(r,plusDM) / ATR
+MinusDI = 100 * wwma(r,minusDM) / ATR
+osc = PlusDI - MinusDI
+hi = highest(osc, Stolength)
+lo = lowest(osc, Stolength)
+Stoch = sum((osc-lo),Stolength) / sum((hi-lo),Stolength) *100
+crossUp = Stoch[1] < os and Stoch > os ? 1 : 0
+crossDo = Stoch[1] > ob and Stoch < ob ? 1 : 0
+alertcondition(crossUp, title='RSI-BUY', message='RSI-BUY')
+alertcondition(crossDo, title='RSI-SELL', message='RSI-SELL')
+
+// HUD
+bgOffset = input(type=integer, defval=0, minval=-20, maxval=20, title="Background Offset")
+bgcolor(pJ > KD ? green : maroon, transp=80, title='KDJ Divergence Background')
+plot(Stoch, linewidth=2, color=gray, style=line, title='RSIWW Line')
+fill(p1, p2, color = pJ > KD ? lime : red, title='KDJ')
+plot(ob, color=gray, linewidth=1,transp=80, title='Overbought')
+plot(os, color=gray, linewidth=1,transp=80, title='Oversold')
+plotchar(crossUp, title="Crossing Up Signal", char='↑', size=size.small, location=location.bottom, color=green, transp=0)
+plotchar(crossDo, title="Crossing Down Signal",char='↓', size=size.small, location=location.top, color=red, transp=0)

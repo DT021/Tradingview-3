@@ -1,0 +1,20 @@
+//@version=3
+study("Money Flow Index - Beasley Savage")
+
+length = input(title="Length", defval=14)
+
+rawMoneyFlow = hlc3 * volume
+
+positiveMoneyFlow = 0.0
+positiveMoneyFlow := hlc3 > hlc3[1] ? positiveMoneyFlow + rawMoneyFlow : positiveMoneyFlow
+negativeMoneyFlow = 0.0
+negativeMoneyFlow :=  hlc3 < hlc3[1] ? negativeMoneyFlow + rawMoneyFlow : negativeMoneyFlow
+
+moneyFlowRatio = sma(positiveMoneyFlow, length) / sma(negativeMoneyFlow, length)
+
+moneyFlowIndex = 100 - 100 / (1 + moneyFlowRatio)
+
+plot(moneyFlowIndex, color=yellow)
+l1 = hline(80)
+l2 = hline(20)
+fill(l1, l2, color=green)

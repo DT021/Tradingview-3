@@ -1,0 +1,58 @@
+study(title="RSI-Aroon-ADI [Numchuck]", shorttitle="RSI-AR-ADX", overlay=false)
+
+// RSI gives signal voor bullish or bearish position in combination with Aroon and ADI
+src = close, 
+len = input(20, minval=1, title="RSI Length")
+up = rma(max(change(src), 0), len)
+down = rma(-min(change(src), 0), len)
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
+
+plot(rsi, title="RSI", style=line, linewidth=3, color=black)
+band2 = hline(80, title="Overbought signal", linestyle=dashed, linewidth=1, color=red)
+band1 = hline(50, title="Buy/Sell signal Line", linestyle=dashed, linewidth=2, color=silver)
+band0 = hline(20, title="Oversold signal", linestyle=dashed, linewidth=1, color=lime)
+
+// ADI with AD+ and AD- gives first indication of direction of trend
+len2 = input(14, minval=1, title="DI Length")
+lensig = input(14, title="ADX Smoothing", minval=1, maxval=50)
+
+
+up1 = change(high)
+down1 = -change(low)
+trur = rma(tr, len2)
+
+plus = fixnan(100 * rma(up1 > down1 and up1 > 0 ? up1 : 0, len2) / trur)
+minus = fixnan(100 * rma(down1 > up1 and down1 > 0 ? down1 : 0, len2) / trur)
+
+sum = plus + minus 
+adx = 100 * rma(abs(plus - minus) / (sum == 0 ? 1 : sum), lensig)
+
+osob=input(40,title="Exhaustion Level for ADX, default = 40")
+
+
+col = adx <= 10 ? gray : adx > 10 and adx <= 20 and plus > minus ? #98FF98 :adx > 10 and adx <= 20 and plus < minus ? #E77471 : adx > 20 and adx <= osob and plus > minus ? lime :adx > 20 and adx <= osob and plus < minus? red: adx > osob and plus > minus ?green:adx > osob and plus < minus ?maroon:white
+// barcolor(col)
+// //plot(plus, color=lime, title="+DI", style=line, linewidth=3)
+// //plot(minus, color=red, title="-DI", style=line, linewidth=3)
+plot(adx, color=col, title="ADX", style=columns)
+plot(0, title="0 Line", style=line, linewidth=1, color=gray)
+
+
+plot(10, title="10 Line", style=circles, linewidth=1, color=gray)
+
+plot(20, title="20 Line", style=circles, linewidth=1, color=gray)
+
+plot(osob, title="10 Line", style=circles, linewidth=1, color=gray)
+
+//AROON
+// length = input(14, minval=1)
+// upper = 100 * (highestbars(high, length+1) + length)/length
+// lower = 100 * (lowestbars(low, length+1) + length)/length
+// plot(upper, color=#FF6A00)
+// plot(lower, color=#0094FF)
+
+// buys = crossover(upper, lower)
+// sells = crossover(lower, upper)
+
+// b_color = buys ? color(green,40) : sells ? color(red,40) : na
+// bgcolor(b_color)

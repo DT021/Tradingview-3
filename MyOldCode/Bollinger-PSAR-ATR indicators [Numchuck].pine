@@ -1,0 +1,84 @@
+//@version=3
+
+study(title="Bollinger-PSAR-ATR indicators [Numchuck]", shorttitle="-PSAR-ATR", overlay=true)
+
+// PSAR
+//Simply Enhances Default Parabolic SAR by creating Two Color Options, One for UpTrend, Other for DownTrend
+//Ability To Turn On/Off The Up Trending Parabolic SAR, And The Down Trending Parabolic SAR
+start = input(2, minval=0, maxval=10, title="Start - Default = 2 - Multiplied by .01")
+increment = input(2, minval=0, maxval=10, title="Step Setting (Sensitivity) - Default = 2 - Multiplied by .01" )
+maximum = input(2, minval=1, maxval=10, title="Maximum Step (Sensitivity) - Default = 2 - Multiplied by .10")
+sus = input(true, "Show Up Trending Parabolic Sar")
+sds = input(true, "Show Down Trending Parabolic Sar")
+disc = input(false, title="Start and Step settings are *.01 so 2 = .02 etc, Maximum Step is *.10 so 2 = .2")
+//"------Step Setting Definition------"
+//"A higher step moves SAR closer to the price action, which makes a reversal more likely."
+//"The indicator will reverse too often if the step is set too high."
+
+//"------Maximum Step Definition-----")
+//"The sensitivity of the indicator can also be adjusted using the Maximum Step."
+//"While the Maximum Step can influence sensitivity, the Step carries more weight"
+//"because it sets the incremental rate-of-increase as the trend develops"
+
+startCalc = start * .01
+incrementCalc = increment * .01
+maximumCalc = maximum * .10
+
+sarUp = sar(startCalc, incrementCalc, maximumCalc)
+sarDown = sar(startCalc, incrementCalc, maximumCalc)
+
+colUp = close >= sarDown ? lime : na
+colDown = close <= sarUp ? red : na
+
+plot(sus and sarUp ? sarUp : na, title="Up Trending SAR", style=circles, linewidth=4,color=colUp)
+plot(sds and sarDown ? sarDown : na, title="Up Trending SAR", style=circles, linewidth=4,color=colDown)
+
+//Bollinger Band Color
+length = input(defval=50, minval=1, title ="MA - Simple")
+src = input(defval=close, title="Source")
+len = input(defval=2, minval=1, title="MA - Exponantial")
+mult = input(defval=2.0, minval=0.001, maxval=50)
+//pr = input(defval=true, type=bool, title="Price Color" )
+
+//Bollinger Bands
+basis = sma(src, length)
+dev = mult * stdev(src, length)
+upper = basis + dev
+lower = basis - dev
+
+price = ema(src, len)
+linecolor = price >= basis ? green : red
+
+
+//Affichage
+
+plot(basis, color=red, transp=75, title="Moving Average")
+p1 = plot(upper, color=linecolor, transp=35, title="high band")
+p2 = plot(lower, color=linecolor, transp=35, title="Low band")
+fill(p1, p2, color=linecolor, transp=95, title="background")
+
+// ATR indicator
+length1 = input(14, minval=1)
+src1 = input(close, title="Source")
+mult1 = input(2.0, minval=0.001, maxval=50)
+maLen=input(7,title="maLength")
+basis1 = sma(src1, length1)
+dev1 = mult1 * atr(length1)
+upper1 = basis1 + dev1
+lower1 = basis1 - dev1
+bbr = (src1 - lower1)/(upper1 - lower1)
+bbe= ema(bbr,maLen)
+up =  bbe[1]>bbe and bbe[2]<bbe[1]?bbe:na
+bt =  bbe[1]<bbe and bbe[2]>bbe[1]?bbe:na
+
+topH=na(up)==0?highest(3):na
+bottomL=na(bt)==0?lowest(3):na
+
+tf= fixnan(topH)
+bf =fixnan(bottomL)
+
+btop=close>open?close:open
+bbot=close>open?open:close
+
+plot(tf,color=blue,style=circles,linewidth=1,offset=-1,title="Bearish SL")
+plot(bf,color=blue,style=circles,linewidth=1,offset=-1,title="Bullish SL")

@@ -1,0 +1,124 @@
+//@version=2
+// A bunch of technical indicators that work with my cryptocurrence trading style combined in one script.
+// Necessary to use because of limit on indicators on a free TV account.
+// Just remove or adapt what you do not need. 
+// Thanks to everyone who took the time to develop the scripts that inspired me to shamelessley use them.
+// This script comes with no warranty!
+
+study("Works for me indicators [Numchuck]", shorttitle="WFM", overlay=true)
+
+// Script section starts here
+// =======================================================================
+// Heiken Ashi Overlay
+EMAlength=input(55,"EMA LENGTH?")
+
+src=ohlc4
+haOpen=0.0
+haOpen := (src + nz(haOpen[1]))/2
+haC=(ohlc4+nz(haOpen)+max(high,nz(haOpen))+min(low,nz(haOpen)))/4
+EMA1=ema(haC,EMAlength)
+EMA2=ema(EMA1,EMAlength)
+EMA3=ema(EMA2,EMAlength)
+TMA1=3*EMA1-3*EMA2+EMA3
+EMA4=ema(TMA1,EMAlength)
+EMA5=ema(EMA4,EMAlength)
+EMA6=ema(EMA5,EMAlength)
+TMA2=3*EMA4-3*EMA5+EMA6
+IPEK=TMA1-TMA2
+YASIN=TMA1+IPEK
+EMA7=ema(hlc3,EMAlength)
+EMA8=ema(EMA7,EMAlength)
+EMA9=ema(EMA8,EMAlength)
+TMA3=3*EMA7-3*EMA8+EMA9
+EMA10=ema(TMA3,EMAlength)
+EMA11=ema(EMA10,EMAlength)
+EMA12=ema(EMA11,EMAlength)
+TMA4=3*EMA10-3*EMA11+EMA12
+IPEK1=TMA3-TMA4
+YASIN1=TMA3+IPEK1
+
+mavi=YASIN1
+kirmizi=YASIN
+
+
+
+longCond=mavi>kirmizi and mavi[1]<=kirmizi[1]
+shortCond=mavi<kirmizi and mavi[1]>=kirmizi[1]
+trendState  = kirmizi < mavi ? true : kirmizi > mavi ? false : trendState[1]
+closePlot   = plot(kirmizi, title = "HA Close Line", color = #009900, linewidth = 10, style = line, transp = 90)
+openPlot    = plot(mavi, title = "HA Open Line", color = #CC0000, linewidth = 10, style = line, transp = 90)
+closePlotU  = plot(trendState ? kirmizi : na, transp = 100, editable = false)
+openPlotU   = plot(trendState ? mavi : na, transp = 100, editable = false)
+closePlotD  = plot(trendState ? na : kirmizi, transp = 100, editable = false)
+openPlotD   = plot(trendState ? na : mavi, transp = 100, editable = false)
+fill(openPlotU, closePlotU, title = "Up Trend Fill", color = #009900, transp = 1)
+fill(openPlotD, closePlotD, title = "Down Trend Fill", color = #CC0000, transp = 1)
+
+
+last_signal = 0
+long_final  = longCond  and (nz(last_signal[1]) == 0 or nz(last_signal[1]) == -1)
+short_final = shortCond and (nz(last_signal[1]) == 0 or nz(last_signal[1]) == 1)
+
+alertcondition(long_final, title="HA buy alarm", message="buy signal!!!")
+alertcondition(short_final, title="HA sell alarm", message="sell signal!!!")
+last_signal := long_final ? 1 : short_final ? -1 : last_signal[1]
+
+plotshape(long_final, style=shape.labelup,
+          location=location.belowbar, color=green,size=size.tiny,title="buy label",text="BUY",textcolor=white)
+plotshape(short_final, style=shape.labeldown,
+          location=location.abovebar, color=red,size=size.tiny,title="sell label",text="SELL",textcolor=white)
+
+// =======================================================================
+
+// Ichimoku Cloud part based on crypto trading
+// Default settings are 9, 26, 26, 52, 26
+// Ideal crypto settings are 20, 60, 120, 30 
+// (or 10, 30, 60, 30 for altcoins with not enough history)
+TKlength=input(20, "Tenkansen Length", minval=1)
+KJlength=input(60, "Kijunsen Length", minval=1)
+CSHSlength=input(60, "Chikouspan Length/Horizontal Shift", minval=1)
+SBlength=input(120, "SenkouspanB Length", minval=1)
+SAlength=input(60,"SenkouspanA Length", minval=1)
+
+TK=avg(lowest(TKlength), highest(TKlength))
+KJ=avg(lowest(KJlength), highest(KJlength))
+CS=close
+SB=avg(lowest(SBlength), highest(SBlength))
+SA=avg(TK,KJ)
+
+plot(TK, linewidth=2, color=blue, title="KumoCloud TenkanSen")
+plot(KJ, linewidth=2, color=red, title="KumoCloud KijunSen")
+plot(CS, offset=-CSHSlength, linewidth=2, color=#DDA0DD, title="KumoCloud ChikouSpan")
+
+SenkouA=plot(SA, offset=CSHSlength,  linewidth=1, color=green, title="KumoCloud SenkouSpanA")
+SenkouB=plot(SB, offset=CSHSlength, linewidth=1, color=purple, title="KumoCloud SenkouSpanB")
+
+fill(SenkouA, SenkouB, color = SA > SB ? green : red)
+
+// =======================================================================
+
+//support and resistance level based on atr channel
+length = input(14, minval=1)
+src1 = input(close, title="Source")
+mult = input(2.0, minval=0.001, maxval=50)
+maLen=input(7,title="maLength")
+basis = sma(src1, length)
+dev = mult * atr(length)
+upper = basis + dev
+lower = basis - dev
+bbr = (src1 - lower)/(upper - lower)
+bbe= ema(bbr,maLen)
+up =  bbe[1]>bbe and bbe[2]<bbe[1]?bbe:na
+bt =  bbe[1]<bbe and bbe[2]>bbe[1]?bbe:na
+
+topH=na(up)==0?highest(3):na
+bottomL=na(bt)==0?lowest(3):na
+
+tf= fixnan(topH)
+bf =fixnan(bottomL)
+
+btop=close>open?close:open
+bbot=close>open?open:close
+
+plot(tf,color=red,style=circles,linewidth=1,offset=-1,title="Bearish SL")
+plot(bf,color=green,style=circles,linewidth=1,offset=-1,title="Bullish SL")

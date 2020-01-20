@@ -1,0 +1,13 @@
+//@version=3
+study(title="Aroon", shorttitle="Aroon", overlay=false)
+length = input(14, minval=1)
+upper = 100 * (highestbars(high, length+1) + length)/length
+lower = 100 * (lowestbars(low, length+1) + length)/length
+plot(upper, color=#FF6A00)
+plot(lower, color=#0094FF)
+
+buys = crossover(upper, lower)
+sells = crossover(lower, upper)
+
+b_color = buys ? color(green,40) : sells ? color(red,40) : na
+bgcolor(b_color)

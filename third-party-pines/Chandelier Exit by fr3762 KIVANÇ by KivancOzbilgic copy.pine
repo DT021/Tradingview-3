@@ -1,0 +1,25 @@
+//@version=2
+//creator: Charles Le Beau 
+//author:KIVANÇ @fr3762 on twitter
+study("Chandelier Exit", overlay = true)
+
+
+length=input(22, minval=1,maxval = 100)
+AtrPeriods=input(22, minval=1,maxval = 100)
+Mult=input(3, minval=1,maxval = 100)
+
+
+LB=highest(high,length)-(Mult*atr(AtrPeriods))
+UB=lowest(low,length)+(Mult*atr(AtrPeriods))
+
+
+TrendUp=close[1]>TrendUp[1]? max(LB,TrendUp[1]) : LB
+TrendDown=close[1]<TrendDown[1]? min(UB,TrendDown[1]) : UB
+
+
+Trend = close > TrendDown[1] ? 1: close< TrendUp[1]? -1: nz(Trend[1],1)
+ChEx = Trend==1? TrendUp: TrendDown
+
+
+
+plot(ChEx, color =maroon , style = line , linewidth = 2,title = "ChEx")

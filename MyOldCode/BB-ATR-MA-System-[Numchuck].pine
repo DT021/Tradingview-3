@@ -1,0 +1,342 @@
+//@version=3
+study("BB-ATR-MA-PSAR-System [Numchuck]", shorttitle="BB-ATR-MA-PSAR", overlay=true)
+OverBought = input(70, minval=0)
+OverSold = input(20, maxval=100)
+
+src1=close
+openclose = ((close - open)/100)
+vol = (volume*close - volume*open/volume*high - volume*low)/-1
+spreadvol = (openclose * vol)
+v = spreadvol + cum(spreadvol)
+v1=v/src1
+Length = input(50)
+NormalizeRange = input(true)
+
+normalize(series) =>
+    h = highest(series, Length)
+    l = lowest(series, Length)
+    res1 = (series - l)/(h - l)
+    
+result = NormalizeRange ? normalize(v1) : (v1 / sma(v1, Length))
+
+len1 = input(5, minval=1)
+ma2 = wma(src1*volume, len1) / wma(volume, len1)
+
+result1 = NormalizeRange ? normalize(ma2) : (ma2 / sma(ma2, Length))
+
+smooth10 = input(1)
+
+z=100 * result1
+x=sma(z, smooth10)
+
+resCustom1 = input("120", title="Time frame", options=[ "03", "15", "30", "45", "60","120","180","240","360","720","1440"])  // custom tfs !!
+value = security(tickerid, resCustom1, x[1], barmerge.gaps_off, barmerge.lookahead_on)  // use this to avoid repaints
+
+length = input(title="Bollinger Length", type=integer, defval=20, minval=1)
+multiplier = input(title="Bollinger Deviation", type=float, defval=2, minval=1)
+overbought = input(title="Overbought", type=integer, defval=1, minval=1)
+oversold = input(title="Oversold", type=integer, defval=0, minval=1)
+custom_timeframe = input(title="Use another Timeframe?", type=bool, defval=false)
+highTimeFrame = input(title="Select The Timeframe", type=resolution, defval="60")
+res1 = custom_timeframe ? highTimeFrame : period
+
+smabasis = sma(close, length)
+stdev = stdev(close, length)
+cierre = security(tickerid, res1, close, false)
+alta = security(tickerid, res1, high, false)
+baja = security(tickerid, res1, low, false)
+basis1 = security(tickerid, res1, smabasis, false)
+stdevb = security(tickerid, res1, stdev, false)
+dev = multiplier * stdevb // stdev(cierre, length)
+upper = basis1 + dev
+lower = basis1 - dev
+
+bbr = (cierre - lower)/(upper - lower)
+
+// plot(bbr)
+
+// // MARCA LAS RESISTENCIAS
+pintarojo = 0.0
+pintarojo := nz(pintarojo[1])
+pintarojo := bbr[1] > overbought and bbr < overbought ? alta[1] :  nz(pintarojo[1])
+p = plot(pintarojo, color = #ff00ff, style=circles, linewidth=2)
+
+// // MARCA LOS SOPORTES
+pintaverde = 0.0
+pintaverde := nz(pintaverde[1])
+pintaverde := bbr[1] < oversold and bbr > oversold ? baja[1] :  nz(pintaverde[1])
+g = plot(pintaverde, color = #19ddd8, style=circles, linewidth=2)
+
+
+
+
+//INPUTS
+per=input(24, type=integer, minval=15, maxval=60)
+preunit=input('atr', title=" atr" )
+preamount=input(1, title="zi", type=float, minval=0, maxval=6)
+
+//CHANNEL
+hb= highest(high,per) //High Border
+lb = lowest(low,per)   //Low Border
+dist = hb-lb          //range of the channel 
+med = (hb+lb)/2        //median of the channel
+
+hf = hb-dist*0.236    //Highest Fib
+chf = hb-dist*0.382    //Center High Fib
+clf = hb-dist*0.618    //Center Low Fib
+lf = hb-dist*0.764     //Lowest Fib
+
+//PULL BACK LEVELS
+//initialise mutatables
+leh=hb
+lel=lb
+hbtrue=true
+
+evpup = high>hb[1] //push up event
+evhbstart =  hb[3]==hb[2] and hb[2]==hb[1] and evpup //horizontal then up, part of evhb calculation
+evpdown = low<lb[1] //push down event
+evlbstart = lb[3]==lb[2] and lb[2]==lb[1] and evpdown //horizontal then down, part of evlb calculation
+
+//two levels will be merged in the plot
+evhb = evhbstart or high[1] == hb //event with high border
+leh := evhb? hf :leh[1] //level high mutatable set to highest fib on event or kept on value
+evlb = evlbstart or low[1] == lb  //event with low border
+lel := evlb? lf :lel[1] //level low mutatable set to lowest fib on event or kept on value
+hbtrue := evhb?true :evlb?false :hbtrue[1] //last event mutatable
+
+//ENTRY MARKERS
+tol=atr(per)*0.2 //tolerance for placing triangles and prediction candles at borders
+//initialise mutatables
+hftrue = true
+lftrue = true
+cftrue = true
+evupin = crossover(close, hf) //market enters up trend
+evupout = crossunder(close, hf) //market leaves up trend
+hftrue := evupin? true :evupout? false :hftrue[1] //mutatable true if in up trend
+evdownin = crossunder(close, lf) //market enters down trend
+evdownout = crossover(close, lf) //market leaves down trend
+lftrue := evdownin? true :evdownout? false :lftrue[1] //mutatable true if in down trend
+cftrue := not hftrue and not lftrue? true : false    //mutatable true if instrument is ranging
+
+//IDENTIFY LAST BAR
+last= barstate.islast
+last:= barstate.isrealtime and isintraday? not barstate.isconfirmed :barstate.islast 
+//barstate.islast works also when all bars are confirmed and are history. However in real time and intradaycharts bars never lose this state.
+//In that situation 'not barstate.isconfirmed' (like not ishistory) is the better alternative. if you use intraday charts after closing time of
+//the markets "barstate.isrealtime and isintraday" will be false and the script will use barstate.islast.
+
+//SITUATION 
+hbdtrue = last and hftrue  //up trend
+lbdtrue = last and lftrue  //down trend
+chfdtrue = last and cftrue and hbtrue //high ranging
+clfdtrue = last and cftrue and not hbtrue //low ranging
+
+//expected levels
+schigh = hb
+schigh := hbdtrue? hb :lbdtrue? lf :chfdtrue? hf :clfdtrue? chf :na //situation candle high
+sclow = lb
+sclow := hbdtrue? hf :lbdtrue? lb :chfdtrue? clf :clfdtrue? lf :na //situation candle low
+
+//prediction levels
+pred= preunit=='atr'? preamount*atr(per) :preunit=='percent'? preamount*close/100 :0 
+prcahigh = med
+prcahigh := hbdtrue and (evpup or evpup[1])? hb+pred :na //prediction level higher than high border
+prcalow = med
+prcalow :=  lbdtrue and (evpdown or evpdown[1])? lb-pred :na //prediction level lower than low border
+
+
+
+//PLOTTINGS
+//plot channel and fibzones
+phb=plot(hbdtrue? na :hb, title="high border", color=black)
+plb = plot(lbdtrue? na :lb, title="low border", color=black)
+
+//plot entry markers
+
+plotshape(evupout?hb+tol :na, style=shape.cross, location=location.absolute, color=red, size=size.tiny)
+plotshape(evdownout?lb-tol :na, style=shape.cross, location=location.absolute, color=blue, size=size.tiny)
+
+//RSI////////////////////////////////////////////////////////////////
+RSIlength = input( 14 ,title="RSI Period Length")
+RSIvaluehigh = input( 55 ,title="RSI High") 
+RSIoverSoldhigh = 0 + RSIvaluehigh
+RSIoverBoughthigh = 100 - RSIvaluehigh
+ 
+RSIvaluelow = input( 40 ,title="RSI Low") 
+RSIoverSoldlow = 0 + RSIvaluelow
+RSIoverBoughtlow = 100 - RSIvaluelow
+
+price = close
+vrsi = rsi(price, RSIlength)
+buy = vrsi<RSIvaluelow
+sell = vrsi>RSIvaluehigh
+
+RSIlength1 = input(5  ,title="RSI Period Length1")
+RSIvaluehigh1 = input( 55 ,title="RSI High") 
+RSIoverSoldhigh1 = 0 + RSIvaluehigh
+RSIoverBoughthigh1 = 100 - RSIvaluehigh1
+ 
+RSIvaluelow1 = input( 40 ,title="RSI Low") 
+RSIoverSoldlow1 = 0 + RSIvaluelow1
+RSIoverBoughtlow1 = 100 - RSIvaluelow
+
+price1 = close
+vrsi1 = rsi(price1, RSIlength1)
+buy1 = vrsi1<RSIvaluelow1
+sell1 = vrsi>RSIvaluehigh1
+///////////// Bollinger Bands
+BBlength = input(20, minval=1,title="Bollinger Bands SMA Period Length")
+BBmult = input(2.0, minval=0.001, maxval=50,title="Bollinger Bands Standard Deviation")
+BBbasis = sma(price, BBlength)
+BBdev = BBmult * stdev(price, BBlength)
+BBupper = BBbasis + BBdev
+BBlower = BBbasis - BBdev
+source = close
+buyEntry = crossover(source, BBlower)
+sellEntry = crossunder(source, BBupper)
+plot(BBbasis, color=aqua,title="Bollinger Bands SMA Basis Line")
+p1 = plot(BBupper, color=silver,title="Bollinger Bands Upper Line")
+p2 = plot(BBlower, color=silver,title="Bollinger Bands Lower Line")
+fill(p1, p2)
+up1=value<OverSold and crossover(close,pintaverde) and evdownout?lb-tol :na 
+up = value<OverSold and buy and vrsi<vrsi1 and evdownout?lb-tol :na 
+down2=value>OverBought and crossunder(close,pintarojo) and evupout?hb+tol :na
+down =value>OverBought and sell and vrsi>vrsi1 and evupout?hb+tol :na
+down1=value>OverBought and vrsi>vrsi1 and evupout?hb+tol :na
+
+plotshape(up, title="buy", style=shape.triangleup,location=location.belowbar, color=green, transp=0, size=size.small)
+plotshape(down,  title="sell", style=shape.triangledown,location=location.abovebar, color=red, transp=0, size=size.small)
+plotshape(up1, title="buy1", style=shape.triangleup,location=location.belowbar, color=green, transp=0, size=size.tiny)
+plotshape(down1,  title="down", style=shape.triangledown,location=location.abovebar, color=red, transp=0, size=size.tiny)
+plotshape(down2,  title="down1", style=shape.triangledown,location=location.abovebar, color=orange, transp=0, size=size.tiny)
+
+
+alertcondition(up, title='buy', message='go long')
+alertcondition(up1, title='buy1', message='go long1')
+alertcondition(down, title='sell', message='go  short')
+alertcondition(down1, title='down', message='go  short1')
+alertcondition(down2, title='down1', message='go  short2')
+
+// ===========================================================
+// Moving averages
+
+src = close
+useCurrentRes = input(true, title="Use Current Chart Resolution?")
+resCustom = input(title="Use Different Timeframe? Uncheck Box Above", type=resolution, defval="D")
+len = input(20, title="Moving Average Length - LookBack Period")
+//periodT3 = input(defval=7, title="Tilson T3 Period", minval=1) 
+factorT3 = input(defval=7, title="Tilson T3 Factor - *.10 - so 7 = .7 etc.", minval=0) 
+atype = input(1,minval=1,maxval=8,title="1=SMA, 2=EMA, 3=WMA, 4=HullMA, 5=VWMA, 6=RMA, 7=TEMA, 8=Tilson T3")
+spc=input(false, title="Show Price Crossing 1st Mov Avg - Highlight Bar?")
+cc = input(true,title="Change Color Based On Direction?")
+smoothe = input(2, minval=1, maxval=10, title="Color Smoothing - Setting 1 = No Smoothing")
+doma2 = input(false, title="Optional 2nd Moving Average")
+spc2=input(false, title="Show Price Crossing 2nd Mov Avg?")
+len2 = input(50, title="Moving Average Length - Optional 2nd MA")
+sfactorT3 = input(defval=7, title="Tilson T3 Factor - *.10 - so 7 = .7 etc.", minval=0)
+atype2 = input(1,minval=1,maxval=8,title="1=SMA, 2=EMA, 3=WMA, 4=HullMA, 5=VWMA, 6=RMA, 7=TEMA, 8=Tilson T3")
+cc2 = input(true,title="Change Color Based On Direction 2nd MA?")
+warn = input(false, title="***You Can Turn On The Show Dots Parameter Below Without Plotting 2nd MA to See Crosses***")
+warn2 = input(false, title="***If Using Cross Feature W/O Plotting 2ndMA - Make Sure 2ndMA Parameters are Set Correctly***")
+sd = input(false, title="Show Dots on Cross of Both MA's")
+
+res = useCurrentRes ? period : resCustom
+//hull ma definition
+hullma = wma(2*wma(src, len/2)-wma(src, len), round(sqrt(len)))
+//TEMA definition
+ema1 = ema(src, len)
+ema2 = ema(ema1, len)
+ema3 = ema(ema2, len)
+tema = 3 * (ema1 - ema2) + ema3
+
+//Tilson T3
+factor = factorT3 *.10
+gd(src, len, factor) => ema(src, len) * (1 + factor) - ema(ema(src, len), len) * factor 
+t3(src, len, factor) => gd(gd(gd(src, len, factor), len, factor), len, factor) 
+tilT3 = t3(src, len, factor) 
+ 
+
+avg = atype == 1 ? sma(src,len) : atype == 2 ? ema(src,len) : atype == 3 ? wma(src,len) : atype == 4 ? hullma : atype == 5 ? vwma(src, len) : atype == 6 ? rma(src,len) : atype == 7 ? 3 * (ema1 - ema2) + ema3 : tilT3
+//2nd Ma - hull ma definition
+hullma2 = wma(2*wma(src, len2/2)-wma(src, len2), round(sqrt(len2)))
+//2nd MA TEMA definition
+sema1 = ema(src, len2)
+sema2 = ema(sema1, len2)
+sema3 = ema(sema2, len2)
+stema = 3 * (sema1 - sema2) + sema3
+
+//2nd MA Tilson T3
+sfactor = sfactorT3 *.10
+sgd(src, len2, sfactor) => ema(src, len2) * (1 + sfactor) - ema(ema(src, len2), len2) * sfactor 
+st3(src, len2, sfactor) => sgd(sgd(gd(src, len2, sfactor), len2, sfactor), len2, sfactor) 
+stilT3 = st3(src, len2, sfactor) 
+
+avg2 = atype2 == 1 ? sma(src,len2) : atype2 == 2 ? ema(src,len2) : atype2 == 3 ? wma(src,len2) : atype2 == 4 ? hullma2 : atype2 == 5 ? vwma(src, len2) : atype2 == 6 ? rma(src,len2) : atype2 == 7 ? 3 * (ema1 - ema2) + ema3 : stilT3
+
+out = avg 
+out_two = avg2
+
+out1 = security(tickerid, res, out)
+out2 = security(tickerid, res, out_two)
+
+//Formula for Price Crossing Moving Average #1
+cr_up = open < out1 and close > out1
+cr_Down = open > out1 and close < out1
+//Formula for Price Crossing Moving Average #2
+cr_up2 = open < out2 and close > out2
+cr_Down2 = open > out2 and close < out2
+//barcolor Criteria for Price Crossing Moving Average #1
+iscrossUp() => cr_up
+iscrossDown() => cr_Down
+//barcolor Criteria for Price Crossing Moving Average #2
+iscrossUp2() => cr_up2
+iscrossDown2() => cr_Down2
+
+ma_up = out1 >= out1[smoothe]
+ma_down = out1 < out1[smoothe]
+
+col = cc ? ma_up ? lime : ma_down ? red : aqua : aqua
+col2 = cc2 ? ma_up ? lime : ma_down ? red : aqua : white
+
+circleYPosition = out2
+
+plot(out1, title="Multi-Timeframe Moving Avg", style=line, linewidth=4, color = col)
+plot(doma2 and out2 ? out2 : na, title="2nd Multi-TimeFrame Moving Average", style=circles, linewidth=4, color=col2)
+plot(sd and cross(out1, out2) ? circleYPosition : na,style=cross, linewidth=15, color=aqua)
+//barcolor Plot for Price Crossing Moving Average #1
+barcolor(spc and iscrossUp() ? (iscrossUp() ? yellow : na) : na)
+barcolor(spc and iscrossDown() ? (iscrossDown() ? yellow : na) : na)
+//barcolor Plot for Price Crossing Moving Average #2
+barcolor(spc2 and iscrossUp2() ? (iscrossUp2() ? yellow : na) : na)
+barcolor(spc2 and iscrossDown2() ? (iscrossDown2() ? yellow : na) : na)
+
+// PSAR
+//Simply Enhances Default Parabolic SAR by creating Two Color Options, One for UpTrend, Other for DownTrend
+//Ability To Turn On/Off The Up Trending Parabolic SAR, And The Down Trending Parabolic SAR
+start = input(2, minval=0, maxval=10, title="Start - Default = 2 - Multiplied by .01")
+increment = input(2, minval=0, maxval=10, title="Step Setting (Sensitivity) - Default = 2 - Multiplied by .01" )
+maximum = input(2, minval=1, maxval=10, title="Maximum Step (Sensitivity) - Default = 2 - Multiplied by .10")
+sus = input(true, "Show Up Trending Parabolic Sar")
+sds = input(true, "Show Down Trending Parabolic Sar")
+disc = input(false, title="Start and Step settings are *.01 so 2 = .02 etc, Maximum Step is *.10 so 2 = .2")
+//"------Step Setting Definition------"
+//"A higher step moves SAR closer to the price action, which makes a reversal more likely."
+//"The indicator will reverse too often if the step is set too high."
+
+//"------Maximum Step Definition-----")
+//"The sensitivity of the indicator can also be adjusted using the Maximum Step."
+//"While the Maximum Step can influence sensitivity, the Step carries more weight"
+//"because it sets the incremental rate-of-increase as the trend develops"
+
+startCalc = start * .01
+incrementCalc = increment * .01
+maximumCalc = maximum * .10
+
+sarUp = sar(startCalc, incrementCalc, maximumCalc)
+sarDown = sar(startCalc, incrementCalc, maximumCalc)
+
+colUp = close >= sarDown ? lime : na
+colDown = close <= sarUp ? red : na
+
+plot(sus and sarUp ? sarUp : na, title="Up Trending SAR", style=circles, linewidth=4,color=colUp)
+plot(sds and sarDown ? sarDown : na, title="Up Trending SAR", style=circles, linewidth=4,color=colDown)

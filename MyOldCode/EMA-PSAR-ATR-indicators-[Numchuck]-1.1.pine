@@ -1,0 +1,86 @@
+//@version=4
+// Version 1.0 - jan 2020 - Bas Willemstijn
+study(title="EMA-PSAR-ATR indicators [Numchuck]", shorttitle="EMA-PSAR-ATR", overlay=true)
+
+// EMA indicator
+dropn(src, n) =>
+    na(src[n]) ? na : src
+
+xema(src, len) =>
+    mult = 2.0 / (len + 1.0)
+    res = float(na)
+    res := mult * src + (1.0 - mult) * nz(res[1], src)
+    res
+
+length1 = input(9, title="Very Fast Length", minval=1)
+length2 = input(21, title="Fast Length", minval=1)
+src = input(close, type=input.source, title="Source")
+dropCandles = input(1, minval=0, title="Drop first N candles")
+
+price = dropn(src, dropCandles)
+
+sig1 = xema(price, length1)
+sig2 = xema(price, length2)
+
+plot(sig1, title="9 day EMA", color=color.red, transp=0, linewidth=2)
+plot(sig2, title="21 day EMA", color=color.green, transp=0, linewidth=2)
+
+// ATR indicator
+length = input(14, minval=1)
+src1 = input(close, title="Source")
+mult = input(2.0, minval=0.001, maxval=50)
+maLen = input(7, title="maLength")
+basis = sma(src1, length)
+dev = mult * atr(length)
+upper = basis + dev
+lower = basis - dev
+bbr = (src1 - lower) / (upper - lower)
+bbe = ema(bbr, maLen)
+up = bbe[1] > bbe and bbe[2] < bbe[1] ? bbe : na
+bt = bbe[1] < bbe and bbe[2] > bbe[1] ? bbe : na
+
+highest_1 = highest(3)
+topH = na(up) == 0 ? highest_1 : na
+lowest_1 = lowest(3)
+bottomL = na(bt) == 0 ? lowest_1 : na
+
+tf = fixnan(topH)
+bf = fixnan(bottomL)
+
+btop = close > open ? close : open
+bbot = close > open ? open : close
+
+plot(tf, color=color.blue, style=plot.style_circles, linewidth=1, offset=-1, title="Bearish SL")
+plot(bf, color=color.blue, style=plot.style_circles, linewidth=1, offset=-1, title="Bullish SL")
+
+// PSAR
+//Simply Enhances Default Parabolic SAR by creating Two Color Options, One for UpTrend, Other for DownTrend
+//Ability To Turn On/Off The Up Trending Parabolic SAR, And The Down Trending Parabolic SAR
+start = input(2, minval=0, maxval=10, title="Start - Default = 2 - Multiplied by .01")
+increment = input(2, minval=0, maxval=10, title="Step Setting (Sensitivity) - Default = 2 - Multiplied by .01")
+maximum = input(2, minval=1, maxval=10, title="Maximum Step (Sensitivity) - Default = 2 - Multiplied by .10")
+sus = input(true, "Show Up Trending Parabolic Sar")
+sds = input(true, "Show Down Trending Parabolic Sar")
+disc = input(false, title="Start and Step settings are *.01 so 2 = .02 etc, Maximum Step is *.10 so 2 = .2")
+//"------Step Setting Definition------"
+//"A higher step moves SAR closer to the price action, which makes a reversal more likely."
+//"The indicator will reverse too often if the step is set too high."
+
+//"------Maximum Step Definition-----")
+//"The sensitivity of the indicator can also be adjusted using the Maximum Step."
+//"While the Maximum Step can influence sensitivity, the Step carries more weight"
+//"because it sets the incremental rate-of-increase as the trend develops"
+
+startCalc = start * .01
+incrementCalc = increment * .01
+maximumCalc = maximum * .10
+
+sarUp = sar(startCalc, incrementCalc, maximumCalc)
+sarDown = sar(startCalc, incrementCalc, maximumCalc)
+
+colUp = close >= sarDown ? color.lime : na
+colDown = close <= sarUp ? color.red : na
+
+plot(sus and sarUp ? sarUp : na, title="Up Trending SAR", style=plot.style_circles, linewidth=4, color=colUp)
+plot(sds and sarDown ? sarDown : na, title="Up Trending SAR", style=plot.style_circles, linewidth=4, color=colDown)
+

@@ -1,0 +1,51 @@
+//@version=2
+// This script is a combination of the Bitcoin investor tool, mayer multiple, 200 week SMA and 200 day SMA.
+// Indicators should only be allowed on the logarithmic daily chart for optimized analysis!
+// Usage is as follows:
+// The 200 week SMA should be used to determine the bottom of a bear market (it has been acted as support up until 2019). 
+// Maximum buying opportunities exists at these levels.
+
+// The 200 day SMA is an indication for determining bull (price above) or bear (price below) markets. It provides general direction.
+
+// The green and red bands are used in combination and are inspired by the Bitcoin investor tool (https://www.lookintobitcoin.com/charts/bitcoin-investor-tool/)
+// When price is below the green line, it indicates an accumulation phase. When price is above the red line, selling opportunities are available. 
+// You should HODL your bitcoin between these lines.
+
+// Finally there is the Mayer multiple (https://mayermultiple.info/). This line indicates if Bitcoin price has been overextended in comparison with the 200 day SMA.
+// If so, selling opportunities arise because overextension will mostly lead to retracement to the 200 day SMA.
+//
+// Warning; Usage of these indicators will not guarantee success and I am not responsible for your trading decisions!!!
+
+study(title="Bitcoin Investor Tool [Numchuck]", shorttitle="BIT", overlay=true)
+
+// Bitcoin investor tool
+Length = input(730, minval=1)
+SMA = sma(close, Length)
+SMA1 = security(tickerid, 'D', SMA)
+HighBand = (SMA * 5)
+HighBand1 = security(tickerid, 'D', HighBand)
+
+// Mayer multiple
+sma_len = input(200, minval=1, title="SMA Length")
+amm = input(2.4, minval=1, title="Average Mayer Multiple")
+out = sma(close, sma_len)
+out1 = security(tickerid, 'D', out)
+
+// 200 weekly on the daily chart
+len2 = input(1400, minval=1)
+src2 = input(close)
+out2 = sma(src2, len2)
+out3 = security(tickerid, 'D', out2)
+
+// 200 day moving average
+len5 = input(200, minval=1, title="Extreme Slow Length")
+src5 = input(close, title="Source")
+out5 = sma(src5, len5)
+out6 = security(tickerid, 'D', out5)
+
+// Plotting of the lines
+plot(SMA1, color=green, title="2 yr SMA")
+plot(HighBand1, color=red, title="2yr SMA * 5")
+plot(out1 * amm, color=blue, title="Mayer Multiple")
+plot(out3,title="200 week SMA", color=black, transp=0, linewidth=1)
+plot(out6, title="200 day SMA", color=#fbaa29, transp=0, linewidth=2)
