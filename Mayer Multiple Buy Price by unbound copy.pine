@@ -1,0 +1,9 @@
+//@version=3
+study(title="Mayer Multiple Buy Price", shorttitle="MMBP", overlay=true)
+
+sma_len = input(200, minval=1, title="SMA Length")
+amm = input(2.4, minval=1, title="Average Mayer Multiple")
+out = sma(close, sma_len)
+out1 = security(tickerid, 'D', out)
+
+plot(out1 * amm, color=blue, title="Mayer Multiple Buy Price")

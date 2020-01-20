@@ -1,0 +1,14 @@
+//@version=1
+study("Mayer Multiple", overlay=false)
+
+psma_length = input(200, title="Price SMA Length")
+msma_length = input(200, title="Multiple SMA Length")
+threshold = input(2.4, title="Threshold")
+
+multiple = close / sma(close, psma_length)
+daily_multiple = security(tickerid, 'D', multiple)
+mma = sma(daily_multiple, msma_length)
+
+plot(daily_multiple, title='Mayer Multiple', color=#4FADF8, linewidth=2)
+plot(threshold, title='Threshold', color=#D06D69, trackprice=true)
+plot(mma, title='Mayer Multiple MA',color=orange, linewidth=1)

@@ -1,8 +1,9 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// Thisfile contains a combination of code from PSAR, ATR sstop loss, Trailing stop loss and Chris Moody MA indicator.
+// Thisfile contains a combination of code from Simple Moving Averages, PSAR, ATR stop loss, Trailing stop loss and Chris Moody MA indicator.
+// All credit is due to the authors of the pieces of code below.
 
-// Version 1.0 - jan 2020 - Bas Willemstijn
-study(title="UMA-PSAR-ATR-[Numchuck]", shorttitle="UMA-PSAR-ATR", overlay=true)
+// Version 1.2 - jan 2020 - Bas Willemstijn
+study(title="UMA-SMA-PSAR-ATR-TS-MM", shorttitle="UMA-SMA-PSAR-ATR-TS-MM", overlay=true)
 
 
 // Chris Moody Ultimate Moving Average
@@ -153,3 +154,45 @@ bbot=close>open?open:close
 
 plot(tf,color=blue,style=circles,linewidth=1,offset=-1,title="Bearish SL")
 plot(bf,color=blue,style=circles,linewidth=1,offset=-1,title="Bullish SL")
+
+// Some important simple moving averages
+// 21 day/week moving average is an indicator of a bullish or bearish trend.
+// 200 day is also used as an indicator for bullish or bearish price action.
+// crossing of the 50 and 200 SMA signals golden (bullish) or death (bearish) trend.
+
+smalen21 = input(21, minval=1, title="Fast Length")
+src21 = input(close, title="Source")
+out21 = sma(src21, smalen21)
+smalen50 = input(50, minval=1, title="Slow Length")
+src50 = input(close, title="Source")
+out50 = sma(src50, smalen50)
+smalen200 = input(200, minval=1, title="Extreme Slow Length")
+src200 = input(close, title="Source")
+out200 = sma(src200, smalen200)
+
+plot(out21,title="21 day SMA", color=#095256, transp=0, linewidth=1)
+plot(out50, title="50 day SMA", color=#d7263d, transp=0, linewidth=2)
+plot(out200, title="200 day SMA", color=#fbaa29, transp=0, linewidth=2)
+
+// ATR Trailing stop loss
+nATRPeriod = input(14)
+nATRMultip = input(3) // take 3x atr as safe stop loss indicator, prevents hunter wicks
+xATR = atr(nATRPeriod)
+nLoss = nATRMultip * xATR
+xATRTrailingStop = iff(close > nz(xATRTrailingStop[1], 0) and close[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), close - nLoss),
+                    iff(close < nz(xATRTrailingStop[1], 0) and close[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), close + nLoss), 
+                        iff(close > nz(xATRTrailingStop[1], 0), close - nLoss, close + nLoss)))
+pos =	iff(close[1] < nz(xATRTrailingStop[1], 0) and close > nz(xATRTrailingStop[1], 0), 1,
+	    iff(close[1] > nz(xATRTrailingStop[1], 0) and close < nz(xATRTrailingStop[1], 0), -1, nz(pos[1], 0))) 
+color = pos == -1 ? red: pos == 1 ? green : blue 
+plot(xATRTrailingStop, color=color, title="ATR Trailing Stop")
+
+// Mayer Multiple signal
+// When price extends over this line, be warned for a pullback.
+
+sma_len = input(200, minval=1, title="SMA 200 Length")
+amm = input(2.4, minval=1, title="Average Mayer Multiple")
+out_mm = sma(close, sma_len)
+out_mm1 = security(tickerid, 'D', out_mm)
+
+plot(out_mm1 * amm, color=blue, title="Mayer Multiple Buy Price")
