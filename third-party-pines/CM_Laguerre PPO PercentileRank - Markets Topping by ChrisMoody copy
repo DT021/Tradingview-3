@@ -1,0 +1,31 @@
+//Created by ChrisMoody on 10/28/2014...Original PPO Code Created by TheLark
+//Great for Spotting Tops.
+study(title = "CM_Laguerre PPO PercentileRank", overlay=false)
+pctile = input(90, title="Percentile Threshold Extreme Value, Exceeding Creates Colored Histogram")
+wrnpctile = input(70, title="Percentile Threshold Warning Value, Exceeding Creates Colored Histogram")
+Short = input(0.4, title="PPO Setting")
+Long = input(0.8, title="PPO Setting")
+lkb = input(200,title="Look Back Period Percent Rank is based off of?")
+sl=input(true,title="Show Threshold Line?")
+swl=input(true,title="Show Warning Threshold Line?")
+
+//Laguerre PPO Code from TheLark
+lag(g, p) =>
+    L0 = (1 - g)*p+g*nz(L0[1])
+    L1 = -g*L0+nz(L0[1])+g*nz(L1[1])
+    L2 = -g*L1+nz(L1[1])+g*nz(L2[1])
+    L3 = -g*L2+nz(L2[1])+g*nz(L3[1])
+    f = (L0 + 2*L1 + 2*L2 + L3)/6
+    f
+lmas = lag(Short, hl2)
+lmal = lag(Long, hl2)
+//PPO Plot
+ppo = (lmas - lmal)/lmal*100
+//PercentRank of PPO 
+pctRank = percentrank(ppo, lkb)
+//Color Definition of Columns
+col = pctRank >= pctile ? red : pctRank >= wrnpctile and pctRank < pctile ? orange : gray
+//Plot Statements.
+plot(pctRank,title="Percentile Rank Columns", color=col,style=columns,linewidth=2)
+plot(sl and pctile ? pctile : na, title="Extreme Move Percentile Threshold Line", color=red, style=linebr, linewidth=4)
+plot(swl and wrnpctile ? wrnpctile : na, title="Warning Percentile Threshold Line", color=orange, style=line, linewidth=4)

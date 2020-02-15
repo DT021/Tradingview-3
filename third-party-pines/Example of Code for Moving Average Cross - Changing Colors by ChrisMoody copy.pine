@@ -1,0 +1,20 @@
+//Created by user ChrisMoody
+//Long EMA = Dots, Short EMA = Line
+//If Short EMA is ABOVE Long EMA = Lime Color, If Short EMA is BELOW Long EMA = Red Color
+study(title="_CM_Double EMA Trend Color", shorttitle="_CM-2EMA-Trend", overlay=true)
+src = close, len = input(50, minval=1, title="Short EMA")
+src2 = close, len2 = input(100, minval=1, title="Long EMA")
+emaShort = ema(src, len)
+emaLong = ema(src2, len2)
+
+spanColor = emaShort>=emaLong ? lime : red
+
+p1 = plot(emaShort, title="EMA Short", style=line, linewidth=4, color=spanColor)
+p2 = plot(emaLong, title="EMA Long", style=circles, linewidth=3, color=spanColor)
+
+fill(p1, p2, color=silver, transp=40, title="Fill")
+
+//If you do not want the Fill gradient between the EMA's follow the steps below.
+
+//Erase the p1 = in line 12 and 13 so plot is at the far left
+//Erase line 15 or put two forward slashes infront of the word fill, just like the two forward slashes at the beginning of this line.

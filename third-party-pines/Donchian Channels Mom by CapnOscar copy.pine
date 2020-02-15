@@ -1,0 +1,17 @@
+study(title="Donchian Channels Mom", shorttitle="DCMom", overlay=false)
+
+len = input(200, minval=1, title="Length")
+src = input(close, title="Source")
+momi = src - src[len]
+smooth = input(10, minval=0, title="Smooth")
+mom=ema(momi, smooth)
+
+length = input(100, minval=1)
+lower = lowest(mom,length)
+upper = highest(mom,length)
+basis = avg(upper, lower)
+l = plot(lower, color=red)
+u = plot(upper, color=red)
+plot(basis, color=red, linewidth=3)
+plot(mom, color=blue, linewidth=3)
+fill(u, l, color=orange, transp=95)

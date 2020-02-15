@@ -1,0 +1,62 @@
+// Version 0.1 - feb 2020 - Bas Willemstijn
+study("Donchian-PSAR-combo", shorttitle="DonPsar", overlay=true)
+src = close
+
+// Madrid Donchian channel
+length = input(21, "Length") // 21MA seens to be the best indicator where price respects trendline
+
+highestBar=highest(high, length)
+lowestBar=lowest(low, length)
+midBar=(highestBar+lowestBar)/2
+
+// Output
+channelColor = abs(highestBar-src) < abs(lowestBar-src) ? green : red
+midChannel=plot(midBar, color=channelColor, style=line, linewidth=1)
+
+upperChannel=plot(highestBar, color=channelColor, style=line, linewidth=1 )
+lowerChannel=plot(lowestBar, color=channelColor, style=line, linewidth=1 )
+
+upperMidChannel=plot(midBar+(highestBar-midBar)*0.5, style=line, linewidth=1, color=channelColor)
+lowerMidChannel=plot(midBar-(midBar-lowestBar)*0.5, style=line, linewidth=1, color=channelColor)
+
+fill(midChannel,upperChannel, color=green, transp=80)
+fill(lowerChannel, midChannel, color=red, transp=80)
+
+fill(upperMidChannel, upperChannel, color=green, transp=80)
+fill(lowerChannel, lowerMidChannel, color=red, transp=80)
+
+plot (midBar, linewidth=4, color=black )
+
+//PSAR INDICATOR
+start = input(2, minval=0, maxval=10, title="Start - Default = 2 - Multiplied by .01")
+increment = input(2, minval=0, maxval=10, title="Step Setting (Sensitivity) - Default = 2 - Multiplied by .01" )
+maximum = input(2, minval=1, maxval=10, title="Maximum Step (Sensitivity) - Default = 2 - Multiplied by .10")
+sus = input(true, "Show Up Trending Parabolic Sar")
+sds = input(true, "Show Down Trending Parabolic Sar")
+disc = input(false, title="Start and Step settings are *.01 so 2 = .02 etc, Maximum Step is *.10 so 2 = .2")
+
+startCalc = start * .01
+incrementCalc = increment * .01
+maximumCalc = maximum * .10
+
+sarUp = sar(startCalc, incrementCalc, maximumCalc)
+sarDown = sar(startCalc, incrementCalc, maximumCalc)
+
+colUp = close >= sarDown ? lime : na
+colDown = close <= sarUp ? red : na
+
+plot(sus and sarUp ? sarUp : na, title="Up Trending SAR", style=circles, linewidth=4,color=colUp)
+plot(sds and sarDown ? sarDown : na, title="Up Trending SAR", style=circles, linewidth=4,color=colDown)
+
+// ATR Trailing stop loss
+nATRPeriod = input(14)
+nATRMultip = input(2) // take 2x atr as safe stop loss indicator for daily candles, 3x for intraday!
+xATR = atr(nATRPeriod)
+nLoss = nATRMultip * xATR
+xATRTrailingStop = iff(close > nz(xATRTrailingStop[1], 0) and close[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), close - nLoss),
+                    iff(close < nz(xATRTrailingStop[1], 0) and close[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), close + nLoss), 
+                        iff(close > nz(xATRTrailingStop[1], 0), close - nLoss, close + nLoss)))
+pos =	iff(close[1] < nz(xATRTrailingStop[1], 0) and close > nz(xATRTrailingStop[1], 0), 1,
+	    iff(close[1] > nz(xATRTrailingStop[1], 0) and close < nz(xATRTrailingStop[1], 0), -1, nz(pos[1], 0))) 
+color = pos == -1 ? red: pos == 1 ? green : blue 
+plot(xATRTrailingStop, color=color, linewidth=2, title="ATR Trailing Stop")
