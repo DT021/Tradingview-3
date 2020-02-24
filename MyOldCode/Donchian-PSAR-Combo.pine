@@ -50,7 +50,7 @@ plot(sds and sarDown ? sarDown : na, title="Up Trending SAR", style=circles, lin
 
 // ATR Trailing stop loss
 nATRPeriod = input(14)
-nATRMultip = input(2) // take 2x atr as safe stop loss indicator for daily candles, 3x for intraday!
+nATRMultip = input(2.2) // take 2x atr as safe stop loss indicator for daily candles, 3x for intraday!
 xATR = atr(nATRPeriod)
 nLoss = nATRMultip * xATR
 xATRTrailingStop = iff(close > nz(xATRTrailingStop[1], 0) and close[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), close - nLoss),
@@ -60,3 +60,4 @@ pos =	iff(close[1] < nz(xATRTrailingStop[1], 0) and close > nz(xATRTrailingStop[
 	    iff(close[1] > nz(xATRTrailingStop[1], 0) and close < nz(xATRTrailingStop[1], 0), -1, nz(pos[1], 0))) 
 color = pos == -1 ? red: pos == 1 ? green : blue 
 plot(xATRTrailingStop, color=color, linewidth=2, title="ATR Trailing Stop")
+

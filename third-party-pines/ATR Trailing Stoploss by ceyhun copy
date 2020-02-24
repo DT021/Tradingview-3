@@ -1,0 +1,13 @@
+//@version=4
+study("ATR Trailing Stoploss",overlay=true)
+Atr=input(5,title="Atr Period")
+Barcolor=input(true,title="Barcolor")
+
+TS=highest(high-2.5*atr(Atr),10),barssince(close>highest(high-2.5*atr(Atr),10) and close>close[1])
+Color=iff(close>TS,color.green,iff(close<TS,color.red,color.black)) 
+barcolor(Barcolor? Color:na)
+
+plot(TS,color=Color,linewidth=3,title="ATR Trailing Stoploss")
+
+plotshape(crossover(close,TS),color=color.green,text="Buy",location=location.belowbar,style=shape.labelup,textcolor=color.white,transp=10)
+plotshape(crossunder(close,TS),color=color.red,text="Sell",style=shape.labeldown,textcolor=color.white,transp=10)

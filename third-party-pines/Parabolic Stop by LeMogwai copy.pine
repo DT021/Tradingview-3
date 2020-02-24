@@ -1,0 +1,26 @@
+study(title="Parabolic Stop", shorttitle="StopAR", overlay=true)
+start = input(0.02)
+increment = input(0.05)
+maximum = input(0.2)
+sar = sar(start, increment, maximum)
+length = input(20)
+smaclose= sma(close, 3*length)
+smahigh = sma(high, 3*length)
+smalow = sma(low, 3*length)
+mult = input(4)
+atr_ = atr(length)
+max1 = max(nz(max_[1]), close)
+min1 = min(nz(min_[1]), close)
+is_uptrend_prev = nz(is_uptrend[1], true)
+stop = is_uptrend_prev ? max1 - mult * atr_ : min1 + mult * atr_
+vstop_prev = nz(vstop[1])
+vstop_prev2 = nz(vstop[2])
+vstop1 = is_uptrend_prev ? min(max(vstop_prev, stop), sar): max(min(vstop_prev, stop), sar)
+is_uptrend = close - vstop1 >= 0
+is_trend_changed = is_uptrend != is_uptrend_prev
+max_ = is_trend_changed ? close : max1
+min_ = is_trend_changed ? close : min1
+vstop = is_trend_changed ? is_uptrend ? max(max_ - mult * atr_, sar) : min(min_ + mult * atr_, sar) : vstop1
+p1 = plot(vstop, color = is_uptrend ? aqua : fuchsia, style = line, linewidth=2)
+sma = is_uptrend?smaclose : smaclose
+p2 = plot(sma, color = white, linewidth=2)
