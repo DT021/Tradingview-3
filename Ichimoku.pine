@@ -1,0 +1,31 @@
+// ver 1.0 settings are adjusted to match Josh Oszewicz recommended 24 hour settings
+// ver 1.1 1, 5, 15, and 30 minute charts will show cloud from 1 hour instead of their own timeframe
+
+study(title="Ichimoku Cloud with Josh Olszewicz Crpyto Adjusted Settings", shorttitle="Ichimoku", overlay=true)
+
+conversionPeriods = input(10, minval=1, title="Conversion Line Periods"),
+basePeriods = input(30, minval=1, title="Base Line Periods")
+laggingSpan2Periods = input(60, minval=1, title="Lagging Span 2 Periods"),
+displacement = input(30, minval=1, title="Displacement")
+
+donchian(len) => avg(lowest(len), highest(len))
+
+// this makes it so we never have smaller period than 1 hour even if you look at 1-30 minute candles it shows you 1 hour ichimoku cloud
+adjust = period == "5" ? 60/5 : period == "10" ? 60/10 : period == "15" ? 60/15 : period == "45" ? 60/45 : period == "30" ? 60/30 : 1
+disappear = period == "1" ? 1 : period == "3" ? 1 : 0
+
+conversionLine = donchian(conversionPeriods*adjust)
+baseLine = donchian(basePeriods*adjust)
+leadLine1 = avg(conversionLine, baseLine)
+leadLine2 = donchian(laggingSpan2Periods*adjust)
+
+plot(disappear ? na : conversionLine, color=#0496ff, title="Conversion Line")
+plot(disappear ? na : baseLine, color=#991515, title="Base Line")
+plot(disappear ? na : close, offset = -displacement*adjust, color=#459915, title="Lagging Span")
+
+p1 = plot(disappear ? na : leadLine1, offset = displacement*adjust, color=green,
+    title="Lead 1")
+p2 = plot(disappear ? na : leadLine2, offset = displacement*adjust, color=red, 
+    title="Lead 2")
+fill(p1, p2, color = leadLine1 > leadLine2 ? green : red, transp=98)
+
