@@ -1,0 +1,138 @@
+study(title="Supercombo", shorttitle="Supercombo", overlay=true)
+
+len = input(9, minval=1, title="Very Fast Length")
+src = input(close, title="Source")
+out = sma(src, len)
+len2 = input(21, minval=1, title="Fast Length")
+src2 = input(close, title="Source")
+out2 = sma(src2, len2)
+len3 = input(50, minval=1, title="Slow Length")
+src3 = input(close, title="Source")
+out3 = sma(src3, len3)
+len4 = input(100, minval=1, title="Very Slow Length")
+src4 = input(close, title="Source")
+out4 = sma(src4, len4)
+len5 = input(200, minval=1, title="Extreme Slow Length")
+src5 = input(close, title="Source")
+out5 = sma(src5, len5)
+
+plot(out, title="9 day SMA", color=#b8b42d, transp=0, linewidth=1)
+plot(out2,title="21 day SMA", color=#095256, transp=0, linewidth=2)
+plot(out3, title="50 day SMA", color=#d7263d, transp=0, linewidth=1)
+plot(out4, title="100 day SMA", color=#124e78, transp=0, linewidth=1)
+plot(out5, title="200 day SMA", color=#fbaa29, transp=0, linewidth=2)
+
+// =======================================================================
+// Crypto Ichimoku
+turningPeriods = input(20, minval=1, title="Tenkan-Sen")
+standardPeriods = input(60, minval=1, title="Kinjun-Sen")
+leadingSpan2Periods = input(120, minval=1, title="Senkou Span B")
+displacement = input(30, minval=1, title="-ChinkouSpan/+SenkouSpan A")
+sts = input(true, title="Show Tenkan-Sen?")
+sks = input(true, title="Show Kinjun-Sen?")
+sll = input(false, title="Show Chinkou Span?")
+sc = input(true, title="Show Cloud?")
+cr1 = input(false, title="Show Crosses up/down Tenkan-Sen and Kinjun-Sen?")
+
+//Definitions for Tenkan-Sen, Kinjun-Sen, Chinkou Span
+donchian(len) => avg(lowest(len), highest(len))
+turning = donchian(turningPeriods)
+standard = donchian(standardPeriods)
+leadingSpan1 = avg(turning, standard)
+leadingSpan2 = donchian(leadingSpan2Periods)
+
+//Crosses up/down Tenkan-Sen and Kinjun-Sen
+crossUpTenkanKinjun = turning[1] < standard[1] and turning > standard ? 1 : 0
+crossDnTenkanKinjun = turning[1] > standard[1] and turning < standard ? 1 : 0
+cupA = crossUpTenkanKinjun == 1 ? crossUpTenkanKinjun : 0
+cdnB = crossDnTenkanKinjun == 1 ? crossDnTenkanKinjun : 0
+
+//First Definition for Ability to Color Cloud based on Trend.
+leadingSpan1Above = leadingSpan1 >= leadingSpan2 ? 1 : na
+leadingSpan2Below = leadingSpan1 <= leadingSpan2 ? 1 : na
+//Next 4 lines are code used as plots in order to Color Cloud based on Trend
+span1plotU = leadingSpan1Above ? leadingSpan1 : na
+span2plotU = leadingSpan1Above ? leadingSpan2 : na
+
+span1plotD = leadingSpan2Below ? leadingSpan1 : na
+span2plotD = leadingSpan2Below ? leadingSpan2 : na
+
+col = leadingSpan1 >= leadingSpan2 ? lime : red
+
+//plots for 3 lines other than cloud.
+plot(sts and turning ? turning : na, title = 'Tenkan-Sen', linewidth=4, color=lime)
+plot(sks and standard ? standard : na, title = 'Kinjun-Sen', linewidth=4, color=#0000FF)
+plot(sll and close ? close : na, title='Chinkou Span', linewidth=4, offset = -displacement, color=fuchsia)
+//Cloud Lines Plot Statements - ***Regular Lines to Fill in Break in Gap
+plot(sc and leadingSpan1 ? leadingSpan1 : na, title = 'Senkou Span A Cloud', style=line, linewidth=5, offset = displacement, color=col)
+plot(sc and leadingSpan2 ? leadingSpan2 : na, title = 'Senkou Span B Cloud', style=line, linewidth=5, offset = displacement, color=col)
+//Cloud Lines Plot Statements - ***linebr to create rules for change in Shading
+p1 = plot(sc and span1plotU ? span1plotU  : na, title = 'Senkou Span A Above Span B Cloud', style=linebr, linewidth=6, offset = displacement, color=col)
+p2 = plot(sc and span2plotU ? span2plotU  : na, title = 'Senkou Span B Below Span A Cloud', style=linebr, linewidth=6, offset = displacement, color=col)
+p3 = plot(sc and span1plotD ? span1plotD  : na, title = 'Senkou Span A Below Span B Cloud', style=linebr, linewidth=6, offset = displacement, color=col)
+p4 = plot(sc and span2plotD ? span2plotD  : na, title = 'Senkou Span B Above Span A Cloud', style=linebr, linewidth=6, offset = displacement, color=col)
+//Fills that color cloud based on Trend.
+fill(p1, p2, color=lime, transp=70, title='Kumo (Cloud)')
+fill(p3, p4, color=red, transp=70, title='Kumo (Cloud)')
+//Arrow Plots At Tenkan-Sen and Kinjun-Sen
+plotarrow(cr1 and cupA ? cupA : na, title="CrossUp Tenkan Kinjun Entry Arrow", colorup=yellow, maxheight=90, minheight=50, transp=0)
+plotarrow(cr1 and cdnB*-1 ? cdnB*-1 : na, title="CrossDn Tenkan Kinjun Entry Arrow", colordown=yellow, maxheight=90, minheight=50, transp=0)
+
+// =======================================================================
+// PSAR
+//Simply Enhances Default Parabolic SAR by creating Two Color Options, One for UpTrend, Other for DownTrend
+//Ability To Turn On/Off The Up Trending Parabolic SAR, And The Down Trending Parabolic SAR
+start = input(2, minval=0, maxval=10, title="Start - Default = 2 - Multiplied by .01")
+increment = input(2, minval=0, maxval=10, title="Step Setting (Sensitivity) - Default = 2 - Multiplied by .01" )
+maximum = input(2, minval=1, maxval=10, title="Maximum Step (Sensitivity) - Default = 2 - Multiplied by .10")
+sus = input(true, "Show Up Trending Parabolic Sar")
+sds = input(true, "Show Down Trending Parabolic Sar")
+disc = input(false, title="Start and Step settings are *.01 so 2 = .02 etc, Maximum Step is *.10 so 2 = .2")
+//"------Step Setting Definition------"
+//"A higher step moves SAR closer to the price action, which makes a reversal more likely."
+//"The indicator will reverse too often if the step is set too high."
+
+//"------Maximum Step Definition-----")
+//"The sensitivity of the indicator can also be adjusted using the Maximum Step."
+//"While the Maximum Step can influence sensitivity, the Step carries more weight"
+//"because it sets the incremental rate-of-increase as the trend develops"
+
+startCalc = start * .01
+incrementCalc = increment * .01
+maximumCalc = maximum * .10
+
+sarUp = sar(startCalc, incrementCalc, maximumCalc)
+sarDown = sar(startCalc, incrementCalc, maximumCalc)
+
+colUp = close >= sarDown ? lime : na
+colDown = close <= sarUp ? red : na
+
+plot(sus and sarUp ? sarUp : na, title="Up Trending SAR", style=circles, linewidth=4,color=colUp)
+plot(sds and sarDown ? sarDown : na, title="Up Trending SAR", style=circles, linewidth=4,color=colDown)
+
+// =======================================================================
+//support and resistance level based on atr channel
+length = input(14, minval=1)
+src1 = input(close, title="Source")
+mult = input(2.2, minval=0.001, maxval=50)
+maLen=input(7,title="maLength")
+basis = sma(src1, length)
+dev = mult * atr(length)
+upper = basis + dev
+lower = basis - dev
+bbr = (src1 - lower)/(upper - lower)
+bbe= ema(bbr,maLen)
+up =  bbe[1]>bbe and bbe[2]<bbe[1]?bbe:na
+bt =  bbe[1]<bbe and bbe[2]>bbe[1]?bbe:na
+
+topH=na(up)==0?highest(3):na
+bottomL=na(bt)==0?lowest(3):na
+
+tf= fixnan(topH)
+bf =fixnan(bottomL)
+
+btop=close>open?close:open
+bbot=close>open?open:close
+
+plot(tf,color=red,style=circles,linewidth=1,offset=-1,title="Bearish SL")
+plot(bf,color=green,style=circles,linewidth=1,offset=-1,title="Bullish SL")

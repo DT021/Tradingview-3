@@ -1,0 +1,24 @@
+study(title="SuperCombo", shorttitle="SC", overlay=true)
+
+// Ichimoku Cloud for Crypto
+conversionPeriods = input(20, minval=1, title="Tenkan sen"),
+basePeriods = input(60, minval=1, title="Kijun sen")
+laggingSpan2Periods = input(120, minval=1, title="Kumo Displacement"),
+displacement = input(30, minval=1, title="Chikou span")
+
+donchian(len) => avg(lowest(len), highest(len))
+
+conversionLine = donchian(conversionPeriods)
+baseLine = donchian(basePeriods)
+leadLine1 = avg(conversionLine, baseLine)
+leadLine2 = donchian(laggingSpan2Periods)
+
+plot(conversionLine, color=#0496ff, linewidth=3, title="Tenkan sen")
+plot(baseLine, color=#991515, linewidth=2, title="Kijun sen")
+plot(close, offset = -displacement, color=orange, title="Kumo Displacement")
+
+p1 = plot(leadLine1, offset = displacement, color=green, title="Senkou Span A")
+p2 = plot(leadLine2, offset = displacement, color=red, title="Senkou Span B")
+fill(p1, p2, color = leadLine1 > leadLine2 ? green : red, transp=95)
+
+

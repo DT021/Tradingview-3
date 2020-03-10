@@ -1,0 +1,109 @@
+study(title="SuperCombo", shorttitle="SC", overlay=true)
+
+// ==============================================================================
+// Ichimoku Cloud for Crypto
+
+conversionPeriods = input(20, minval=1, title="Tenkan sen"),
+basePeriods = input(60, minval=1, title="Kijun sen")
+laggingSpan2Periods = input(120, minval=1, title="Kumo Displacement"),
+displacement = input(30, minval=1, title="Chikou span")
+
+donchian(len) => avg(lowest(len), highest(len))
+
+conversionLine = donchian(conversionPeriods)
+baseLine = donchian(basePeriods)
+leadLine1 = avg(conversionLine, baseLine)
+leadLine2 = donchian(laggingSpan2Periods)
+
+plot(conversionLine, color=#0496ff, linewidth=3, title="Tenkan sen")
+plot(baseLine, color=#991515, linewidth=2, title="Kijun sen")
+plot(close, offset = -displacement, color=orange, title="Kumo Displacement")
+
+p1 = plot(leadLine1, offset = displacement, color=green, title="Senkou Span A")
+p2 = plot(leadLine2, offset = displacement, color=red, title="Senkou Span B")
+fill(p1, p2, color = leadLine1 > leadLine2 ? green : red, transp=95)
+
+// ==============================================================================
+// Exponential moving averages
+
+dropn(src, n) =>
+    na(src[n]) ? na : src
+
+xema(src, len) =>
+    mult = 2.0 / (len + 1.0)
+    //res = na
+    res = mult * src + (1.0 - mult) * nz(res[1], src)
+
+length1 = input(9, title="Very Fast Length", minval=1)
+length2 = input(20, title="Fast Length", minval=1)
+length3 = input(50, title="Slow Length", minval=1)
+length4 = input(100, title="Very Slow Length", minval=1)
+length5 = input(200, title="Extreme Slow Length", minval=1)
+src = input(close, type=source, title="Source")
+dropCandles = input(1, minval=0, title="Drop first N candles")
+
+price = dropn(src, dropCandles)
+
+sig1 = xema(price, length1)
+sig2 = xema(price, length2)
+sig3 = xema(price, length3)
+sig4 = xema(price, length4)
+sig5 = xema(price, length5)
+
+plot(sig1, title="9 day EMA", color=#b8b42d, transp=90, linewidth=1)
+plot(sig2, title="20 day EMA", color=#095256, transp=75, linewidth=3)
+plot(sig3, title="50 day EMA", color=#d7263d, transp=75, linewidth=2)
+plot(sig4, title="100 day EMA", color=#124e78, transp=90, linewidth=1)
+plot(sig5, title="200 day EMA", color=#fbaa29, transp=75, linewidth=2)
+
+// =======================================================================
+// PSAR
+
+//Simply Enhances Default Parabolic SAR by creating Two Color Options, One for UpTrend, Other for DownTrend
+//Ability To Turn On/Off The Up Trending Parabolic SAR, And The Down Trending Parabolic SAR
+start = input(2, minval=0, maxval=10, title="Start - Default = 2 - Multiplied by .01")
+increment = input(2, minval=0, maxval=10, title="Step Setting (Sensitivity) - Default = 2 - Multiplied by .01" )
+maximum = input(2, minval=1, maxval=10, title="Maximum Step (Sensitivity) - Default = 2 - Multiplied by .10")
+sus = input(true, "Show Up Trending Parabolic Sar")
+sds = input(true, "Show Down Trending Parabolic Sar")
+disc = input(false, title="Start and Step settings are *.01 so 2 = .02 etc, Maximum Step is *.10 so 2 = .2")
+
+startCalc = start * .01
+incrementCalc = increment * .01
+maximumCalc = maximum * .10
+
+sarUp = sar(startCalc, incrementCalc, maximumCalc)
+sarDown = sar(startCalc, incrementCalc, maximumCalc)
+
+colUp = close >= sarDown ? lime : na
+colDown = close <= sarUp ? red : na
+
+plot(sus and sarUp ? sarUp : na, title="Up Trending SAR", style=circles, linewidth=3,color=colUp)
+plot(sds and sarDown ? sarDown : na, title="Up Trending SAR", style=circles, linewidth=3,color=colDown)
+
+// =======================================================================
+//support and resistance level based on atr channel
+length = input(14, minval=1)
+src1 = input(close, title="Source")
+mult = input(2.2, minval=0.001, maxval=50)
+maLen=input(7,title="maLength")
+basis = sma(src1, length)
+dev = mult * atr(length)
+upper = basis + dev
+lower = basis - dev
+bbr = (src1 - lower)/(upper - lower)
+bbe= ema(bbr,maLen)
+up =  bbe[1]>bbe and bbe[2]<bbe[1]?bbe:na
+bt =  bbe[1]<bbe and bbe[2]>bbe[1]?bbe:na
+
+topH=na(up)==0?highest(3):na
+bottomL=na(bt)==0?lowest(3):na
+
+tf= fixnan(topH)
+bf =fixnan(bottomL)
+
+btop=close>open?close:open
+bbot=close>open?open:close
+
+plot(tf,color=red,style=circles,linewidth=1,offset=-1,title="Bearish SL")
+plot(bf,color=green,style=circles,linewidth=1,offset=-1,title="Bullish SL")
